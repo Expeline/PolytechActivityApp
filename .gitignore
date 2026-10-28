@@ -1,0 +1,15 @@
+.DS_Store
+.build/
+build/
+build-device/
+DerivedData/
+*.xcuserstate
+xcuserdata/
+.swiftpm/
+__pycache__/
+*.pyc
+build-mac/
+Releases/
+Backups/
+.tooling/
+Android/
