@@ -1,15 +1,15 @@
 import Foundation
 
 // All schedule dates belong to Saint Petersburg, regardless of the phone's timezone.
-enum StudyClock {
-    static var calendar: Calendar {
+public enum StudyClock {
+    public static var calendar: Calendar {
         var calendar = Calendar(identifier: .gregorian)
         calendar.timeZone = TimeZone(identifier: "Europe/Moscow")!
         calendar.firstWeekday = 2
         return calendar
     }
 
-    static func date(_ day: String, time: String = "00:00") -> Date? {
+    public static func date(_ day: String, time: String = "00:00") -> Date? {
         let formatter = DateFormatter()
         formatter.calendar = calendar
         formatter.locale = Locale(identifier: "en_US_POSIX")
@@ -19,7 +19,7 @@ enum StudyClock {
         return formatter.date(from: "\(day) \(time)")
     }
 
-    static func string(_ date: Date, format: String) -> String {
+    public static func string(_ date: Date, format: String) -> String {
         let formatter = DateFormatter()
         formatter.locale = Locale(identifier: "ru_RU")
         formatter.timeZone = calendar.timeZone
@@ -27,36 +27,38 @@ enum StudyClock {
         return formatter.string(from: date)
     }
 
-    static func monday(_ date: Date) -> Date {
+    public static func monday(_ date: Date) -> Date {
         let day = calendar.startOfDay(for: date)
         let offset = (calendar.component(.weekday, from: day) + 5) % 7
         return calendar.date(byAdding: .day, value: -offset, to: day)!
     }
 
-    static func addDays(_ count: Int, to date: Date) -> Date {
+    public static func addDays(_ count: Int, to date: Date) -> Date {
         calendar.date(byAdding: .day, value: count, to: date)!
     }
 }
 
-struct Faculty: Codable, Hashable, Sendable {
-    let id: Int
-    let name: String
-    let abbr: String?
+public struct Faculty: Codable, Hashable, Sendable {
+    public let id: Int
+    public let name: String
+    public let abbr: String?
+    public init(id: Int, name: String, abbr: String?) { self.id = id; self.name = name; self.abbr = abbr }
 }
 
-struct StudyGroup: Codable, Hashable, Identifiable, Sendable {
-    let id: Int
-    let name: String
-    let faculty: Faculty
+public struct StudyGroup: Codable, Hashable, Identifiable, Sendable {
+    public let id: Int
+    public let name: String
+    public let faculty: Faculty
+    public init(id: Int, name: String, faculty: Faculty) { self.id = id; self.name = name; self.faculty = faculty }
 
-    static let `default` = StudyGroup(id: 45602, name: "5130904/40102", faculty: Faculty(
+    public static let `default` = StudyGroup(id: 45602, name: "5130904/40102", faculty: Faculty(
         id: 125, name: "Институт компьютерных наук и кибербезопасности", abbr: "ИКНК"))
 
-    var sourceURL: URL {
+    public var sourceURL: URL {
         URL(string: "https://ruz.spbstu.ru/faculty/\(faculty.id)/groups/\(id)")!
     }
 
-    static func ids(from text: String) -> (faculty: Int, group: Int)? {
+    public static func ids(from text: String) -> (faculty: Int, group: Int)? {
         guard let url = URL(string: text.trimmingCharacters(in: .whitespacesAndNewlines)),
               url.scheme == "https", url.host == "ruz.spbstu.ru" else { return nil }
         let parts = url.pathComponents.filter { $0 != "/" }
@@ -66,18 +68,18 @@ struct StudyGroup: Codable, Hashable, Identifiable, Sendable {
     }
 }
 
-struct ScheduleResponse: Codable, Sendable {
-    let week: Week
-    let days: [ScheduleDay]
-    let group: StudyGroup
+public struct ScheduleResponse: Codable, Sendable {
+    public let week: Week
+    public let days: [ScheduleDay]
+    public let group: StudyGroup
 
-    struct Week: Codable, Sendable {
-        let date_start: String
-        let date_end: String
-        let is_odd: Bool
+    public struct Week: Codable, Sendable {
+        public let date_start: String
+        public let date_end: String
+        public let is_odd: Bool
     }
 
-    var lessons: [Lesson] {
+    public var lessons: [Lesson] {
         var result: [Lesson] = []
         for day in days {
             for (index, entry) in day.lessons.enumerated() {
@@ -96,76 +98,86 @@ struct ScheduleResponse: Codable, Sendable {
     }
 }
 
-struct ScheduleDay: Codable, Sendable {
-    let date: String
-    let lessons: [ScheduleEntry]
+public struct ScheduleDay: Codable, Sendable {
+    public let date: String
+    public let lessons: [ScheduleEntry]
 }
 
-struct ScheduleEntry: Codable, Sendable {
-    let subject: String
-    let time_start: String
-    let time_end: String
-    let typeObj: LessonKind?
-    let teachers: [Teacher]?
-    let auditories: [Room]?
-    let additional_info: String?
-    let webinar_url: String?
-    let lms_url: String?
+public struct ScheduleEntry: Codable, Sendable {
+    public let subject: String
+    public let time_start: String
+    public let time_end: String
+    public let typeObj: LessonKind?
+    public let teachers: [Teacher]?
+    public let auditories: [Room]?
+    public let additional_info: String?
+    public let webinar_url: String?
+    public let lms_url: String?
 
-    struct LessonKind: Codable, Sendable { let name: String }
-    struct Teacher: Codable, Sendable { let full_name: String }
+    public struct LessonKind: Codable, Sendable { public let name: String }
+    public struct Teacher: Codable, Sendable { public let full_name: String }
 }
 
-struct Room: Codable, Hashable, Sendable {
-    let name: String
-    let building: Building?
-    struct Building: Codable, Hashable, Sendable {
-        let name: String
-        let abbr: String?
-        let address: String?
+public struct Room: Codable, Hashable, Sendable {
+    public let name: String
+    public let building: Building?
+    public init(name: String, building: Building?) { self.name = name; self.building = building }
+    public struct Building: Codable, Hashable, Sendable {
+        public let name: String
+        public let abbr: String?
+        public let address: String?
+        public init(name: String, abbr: String?, address: String?) { self.name = name; self.abbr = abbr; self.address = address }
     }
-    var label: String {
+    public var label: String {
         if name.localizedCaseInsensitiveContains("дистанц") { return "Дистанционно" }
         return [name, building?.abbr ?? building?.name].compactMap { $0 }.filter { !$0.isEmpty }.joined(separator: " · ")
     }
 }
 
-struct Lesson: Identifiable, Codable, Hashable, Sendable {
-    let id: String
-    let subject: String
-    let kind: String
-    let start: Date
-    let end: Date
-    let teachers: [String]
-    let rooms: [Room]
-    let additionalInfo: String
-    let webinarURL: String?
-    let lmsURL: String?
+public struct Lesson: Identifiable, Codable, Hashable, Sendable {
+    public let id: String
+    public let subject: String
+    public let kind: String
+    public let start: Date
+    public let end: Date
+    public let teachers: [String]
+    public let rooms: [Room]
+    public let additionalInfo: String
+    public let webinarURL: String?
+    public let lmsURL: String?
 
-    var isMilitary: Bool {
+    public init(id: String, subject: String, kind: String, start: Date, end: Date, teachers: [String], rooms: [Room],
+                additionalInfo: String = "", webinarURL: String? = nil, lmsURL: String? = nil) {
+        self.id = id; self.subject = subject; self.kind = kind; self.start = start; self.end = end
+        self.teachers = teachers; self.rooms = rooms; self.additionalInfo = additionalInfo
+        self.webinarURL = webinarURL; self.lmsURL = lmsURL
+    }
+
+    public var isMilitary: Bool {
         let value = subject.folding(options: [.caseInsensitive, .diacriticInsensitive], locale: Locale(identifier: "ru_RU"))
         return value.contains("военн") || value.contains("воинск")
     }
-    var location: String { rooms.isEmpty ? "Аудитория не указана" : rooms.map(\.label).joined(separator: ", ") }
-    var timeRange: String { "\(StudyClock.string(start, format: "HH:mm"))–\(StudyClock.string(end, format: "HH:mm"))" }
+    public var location: String { rooms.isEmpty ? "Аудитория не указана" : rooms.map(\.label).joined(separator: ", ") }
+    public var timeRange: String { "\(StudyClock.string(start, format: "HH:mm"))–\(StudyClock.string(end, format: "HH:mm"))" }
 
-    static func next(in lessons: [Lesson], after now: Date, skipMilitary: Bool) -> Lesson? {
+    public static func next(in lessons: [Lesson], after now: Date, skipMilitary: Bool) -> Lesson? {
         lessons.filter { $0.start > now && (!skipMilitary || !$0.isMilitary) }
             .min { $0.start == $1.start ? $0.id < $1.id : $0.start < $1.start }
     }
 
-    static func current(in lessons: [Lesson], at now: Date, skipMilitary: Bool) -> Lesson? {
+    public static func current(in lessons: [Lesson], at now: Date, skipMilitary: Bool) -> Lesson? {
         lessons.filter { $0.start <= now && now < $0.end && (!skipMilitary || !$0.isMilitary) }
             .sorted { $0.start == $1.start ? $0.id < $1.id : $0.start > $1.start }.first
     }
 
-    static func activeOrNext(in lessons: [Lesson], at now: Date, skipMilitary: Bool) -> Lesson? {
+    public static func activeOrNext(in lessons: [Lesson], at now: Date, skipMilitary: Bool) -> Lesson? {
         current(in: lessons, at: now, skipMilitary: skipMilitary)
             ?? next(in: lessons, after: now, skipMilitary: skipMilitary)
     }
 }
 
-struct CachedWeek: Codable {
-    let response: ScheduleResponse
-    let fetchedAt: Date
+public struct CachedWeek: Codable, Sendable {
+    public let response: ScheduleResponse
+    public let fetchedAt: Date
+    public init(response: ScheduleResponse, fetchedAt: Date) { self.response = response; self.fetchedAt = fetchedAt }
 }
