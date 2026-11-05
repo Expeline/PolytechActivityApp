@@ -6,10 +6,12 @@ import WidgetKit
     @MainActor static func main() throws {
         _ = NSApplication.shared
         let response = try JSONDecoder().decode(ScheduleResponse.self, from: Data(contentsOf: URL(fileURLWithPath: CommandLine.arguments[1])))
-        let snapshot = WidgetSnapshot(group: response.group, lessons: response.lessons, preferences: StudyPreferences(), updatedAt: .now)
-        let entry = ScheduleWidgetEntry(date: .now, snapshot: snapshot, error: nil)
+        let snapshot = WidgetSnapshot(group: response.group, lessons: response.lessons, preferences: StudyPreferences(), updatedAt: .now, theme: "dark")
+        // Optional third argument: "yyyy-MM-dd HH:mm" in Moscow time, to preview a given moment.
+        let date = CommandLine.arguments.count > 3 ? StudyClock.date(String(CommandLine.arguments[3].prefix(10)), time: String(CommandLine.arguments[3].suffix(5)))! : .now
+        let entry = ScheduleWidgetEntry(date: date, snapshot: snapshot, error: nil)
         let output = URL(fileURLWithPath: CommandLine.arguments[2])
-        for (name, family, width, height) in [("small", WidgetFamily.systemSmall, 170.0, 170.0), ("medium", .systemMedium, 360.0, 170.0), ("large", .systemLarge, 360.0, 380.0)] {
+        for (name, family, width, height) in [("small", WidgetFamily.systemSmall, 170.0, 170.0), ("medium", .systemMedium, 360.0, 170.0), ("large", .systemLarge, 360.0, 380.0), ("xlarge", .systemExtraLarge, 760.0, 380.0)] {
             let view = ScheduleWidgetView(entry: entry, previewFamily: family)
                 .padding(16).frame(width: width, height: height)
                 .background(Color(red: 0.035, green: 0.12, blue: 0.095), in: RoundedRectangle(cornerRadius: 24))

@@ -101,4 +101,19 @@ final class ScheduleTests: XCTestCase {
         XCTAssertNil(restored.currentLesson(at: lesson.start))
     }
 
+    func testWidgetLooksAheadOnlyWhenTodayIsDone() throws {
+        let response = try response()
+        var snapshot = WidgetSnapshot(group: response.group, lessons: response.lessons,
+                                      preferences: StudyPreferences(), updatedAt: .now)
+        XCTAssertTrue(snapshot.upcomingDays(at: StudyClock.date("2026-10-12", time: "13:00")!).isEmpty)
+        XCTAssertTrue(snapshot.upcomingDays(at: StudyClock.date("2026-10-12", time: "13:45")!).isEmpty)
+        let evening = snapshot.upcomingDays(at: StudyClock.date("2026-10-12", time: "18:00")!)
+        // Tuesday is military only, so the next study day is Wednesday; Saturday loses its military lesson.
+        XCTAssertEqual(evening.map { StudyClock.string($0[0].start, format: "yyyy-MM-dd") },
+                       ["2026-10-14", "2026-10-15", "2026-10-16", "2026-10-17"])
+        XCTAssertEqual(evening.last?.count, 4)
+        snapshot.preferences.finishedDays.insert(snapshot.preferences.dayKey(StudyClock.date("2026-10-12")!, groupID: response.group.id))
+        XCTAssertEqual(snapshot.upcomingDays(at: StudyClock.date("2026-10-12", time: "12:30")!).first?.first?.subject, "Методы оптимизации")
+    }
+
 }

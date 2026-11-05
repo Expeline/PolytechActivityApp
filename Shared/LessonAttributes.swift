@@ -12,7 +12,6 @@ struct LessonAttributes: ActivityAttributes {
         let ongoing: Bool?
         let accent: StudyAccent?
         let theme: String?
-        var isOngoing: Bool { ongoing ?? false }
     }
     let groupName: String
 }

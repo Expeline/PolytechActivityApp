@@ -44,14 +44,14 @@ struct ScheduleWidget: Widget {
                 .widgetURL(URL(string: "polytech://schedule"))
         }
         .configurationDisplayName("Пары под рукой")
-        .description("Только текущая пара или свободное время. Настройки — из приложения.")
+        .description("Текущая пара, а после занятий — следующий учебный день или неделя. Настройки — из приложения.")
         .supportedFamilies(families)
     }
     private var families: [WidgetFamily] {
         #if os(iOS)
-        [.systemSmall, .systemMedium, .systemLarge, .accessoryRectangular, .accessoryInline, .accessoryCircular]
+        [.systemSmall, .systemMedium, .systemLarge, .systemExtraLarge, .accessoryRectangular, .accessoryInline, .accessoryCircular]
         #else
-        [.systemSmall, .systemMedium, .systemLarge]
+        [.systemSmall, .systemMedium, .systemLarge, .systemExtraLarge]
         #endif
     }
 }
@@ -82,13 +82,18 @@ struct ScheduleWidgetView: View {
                     Text(entry.lesson?.subject ?? emptyTitle).font(.headline).lineLimit(1)
                     if let lesson = entry.lesson { Text("\(lesson.timeRange) · \(lesson.location)").font(.caption2) }
                 }
-            } else { card }
+            } else { main }
             #else
-            card
+            main
             #endif
         }.environment(\.colorScheme, scheme)
             .environment(\.locale, Locale(identifier: "ru_RU"))
             .environment(\.timeZone, StudyClock.calendar.timeZone)
+    }
+    @ViewBuilder private var main: some View {
+        // Small keeps the plain "free" card; bigger sizes look ahead once today is over.
+        let days = entry.lesson == nil && family != .systemSmall ? entry.snapshot?.upcomingDays(at: entry.date) ?? [] : []
+        if let first = days.first?.first { upcoming(days, first: first) } else { card }
     }
     private var card: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -126,6 +131,71 @@ struct ScheduleWidgetView: View {
         if snapshot.preferences.isFinished(entry.date, groupID: snapshot.group.id) { return "День завершён" }
         let today = snapshot.lessons.filter { StudyClock.calendar.isDate($0.start, inSameDayAs: entry.date) && snapshot.preferences.includes($0, groupID: snapshot.group.id) }
         return today.isEmpty ? "День свободен" : "Сейчас нет пары"
+    }
+    private func upcoming(_ days: [[Lesson]], first: Lesson) -> some View {
+        VStack(alignment: .leading, spacing: family == .systemMedium ? 6 : 8) {
+            HStack {
+                Text("СЛЕДУЮЩАЯ ПАРА").font(.system(size: 9, weight: .bold)).tracking(1.5).foregroundStyle(mint)
+                Spacer()
+                Text("через \(Text(first.start, style: .relative))").font(.system(size: 10, weight: .medium)).foregroundStyle(mint).lineLimit(1)
+            }
+            switch family {
+            case .systemMedium:
+                Text(dayTitle(first.start)).font(.system(size: 10, weight: .semibold)).foregroundStyle(ink.opacity(0.55))
+                Text(first.subject).font(.system(size: 18, weight: .medium)).lineLimit(2)
+                Text("\(first.timeRange) · \(first.location)").font(.system(size: 10)).foregroundStyle(ink.opacity(0.65)).lineLimit(1)
+                Spacer(minLength: 0)
+                if let rest = days[0].dropFirst().last {
+                    Text("Ещё \(days[0].count - 1) · до \(StudyClock.string(rest.end, format: "HH:mm"))").font(.system(size: 10)).foregroundStyle(ink.opacity(0.55))
+                }
+            case .systemLarge:
+                ForEach(fitting(days, rows: 5), id: \.self) { day in
+                    Text(dayTitle(day[0].start)).font(.system(size: 15, weight: .semibold)).padding(.top, 2)
+                    ForEach(day) { row($0) }
+                }
+                Spacer(minLength: 0)
+            default:
+                HStack(alignment: .top, spacing: 14) {
+                    ForEach(days.prefix(6), id: \.self) { day in
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text(dayTitle(day[0].start, format: "EE, d")).font(.system(size: 12, weight: .semibold))
+                            ForEach(day.prefix(5)) { lesson in
+                                VStack(alignment: .leading, spacing: 1) {
+                                    Text(StudyClock.string(lesson.start, format: "HH:mm")).font(.system(size: 10, weight: .semibold)).monospacedDigit().foregroundStyle(mint)
+                                    Text(lesson.subject).font(.system(size: 11)).lineLimit(2)
+                                }
+                            }
+                        }.frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                }
+                Spacer(minLength: 0)
+            }
+        }.foregroundStyle(ink)
+    }
+    private func row(_ lesson: Lesson) -> some View {
+        HStack(alignment: .top, spacing: 10) {
+            Text(StudyClock.string(lesson.start, format: "HH:mm")).font(.system(size: 12, weight: .semibold)).monospacedDigit().foregroundStyle(mint).frame(width: 40, alignment: .leading)
+            VStack(alignment: .leading, spacing: 1) {
+                Text(lesson.subject).font(.system(size: 13, weight: .medium)).lineLimit(1)
+                Text("\(lesson.kind) · \(lesson.location)").font(.system(size: 10)).foregroundStyle(ink.opacity(0.6)).lineLimit(1)
+            }
+        }
+    }
+    private func dayTitle(_ date: Date, format: String = "EEEE, d MMMM") -> String {
+        if StudyClock.calendar.isDate(date, inSameDayAs: StudyClock.addDays(1, to: entry.date)) {
+            return format == "EEEE, d MMMM" ? "Завтра, \(StudyClock.string(date, format: "d MMMM"))" : "Завтра"
+        }
+        let title = StudyClock.string(date, format: format)
+        return title.prefix(1).uppercased() + title.dropFirst()
+    }
+    /// Whole days that fit into `rows` lines; a single long day is cut instead.
+    private func fitting(_ days: [[Lesson]], rows: Int) -> [[Lesson]] {
+        var result: [[Lesson]] = [], left = rows
+        for day in days {
+            guard day.count <= left else { break }
+            result.append(day); left -= day.count
+        }
+        return result.isEmpty ? [Array(days[0].prefix(rows))] : result
     }
     private func clock(_ lesson: Lesson) -> some View {
         Text(timerInterval: entry.date...max(entry.date, entry.ongoing ? lesson.end : lesson.start), countsDown: true)

@@ -42,7 +42,6 @@ actor LiveHub {
         sockets[groupID]?[id] = nil
         if sockets[groupID]?.isEmpty == true { sockets[groupID] = nil }
     }
-    func count(groupID: Int) -> Int { sockets[groupID]?.count ?? 0 }
 
     func broadcast(_ event: LiveEvent) async {
         guard let targets = sockets[event.groupID]?.values,

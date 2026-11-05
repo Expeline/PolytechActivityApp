@@ -9,7 +9,6 @@ enum Palette {
     static let green = Color("AccentColor")
     static let canvas = Color("Canvas")
     static let card = Color("Card")
-    static let forest = Color(red: 0.055, green: 0.25, blue: 0.18)
     static let mint = Color(red: 0.76, green: 0.94, blue: 0.54)
 }
 
@@ -102,7 +101,6 @@ struct ToggleRow: View {
     }
 }
 extension View {
-    func studyCard() -> some View { padding(18).background(Palette.card, in: RoundedRectangle(cornerRadius: 20)) }
     @ViewBuilder func studySearchInput() -> some View {
         #if os(iOS)
         textInputAutocapitalization(.never)

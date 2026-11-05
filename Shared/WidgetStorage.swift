@@ -17,6 +17,16 @@ struct WidgetSnapshot: Codable {
     func currentLesson(at date: Date) -> Lesson? {
         Lesson.current(in: preferences.eligible(lessons, groupID: group.id, now: date), at: date, skipMilitary: false)
     }
+
+    /// Study days within a week of the next one, but only once today has nothing left to attend.
+    func upcomingDays(at date: Date) -> [[Lesson]] {
+        let calendar = StudyClock.calendar
+        let upcoming = preferences.eligible(lessons, groupID: group.id, now: date).sorted { $0.start < $1.start }
+        guard let first = upcoming.first, !calendar.isDate(first.start, inSameDayAs: date) else { return [] }
+        let horizon = StudyClock.addDays(7, to: calendar.startOfDay(for: first.start))
+        return Dictionary(grouping: upcoming.filter { $0.start < horizon }) { calendar.startOfDay(for: $0.start) }
+            .sorted { $0.key < $1.key }.map(\.value)
+    }
 }
 
 enum WidgetStorage {

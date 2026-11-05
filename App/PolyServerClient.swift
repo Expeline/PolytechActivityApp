@@ -11,11 +11,6 @@ enum PolyServerError: LocalizedError {
         case .rejected(let reason): reason
         }
     }
-    /// Network trouble: keep queued actions and retry later.
-    var isTransient: Bool {
-        if case .unreachable = self { return true }
-        return false
-    }
 }
 
 /// Talks to PolyServer. Stateless; the caller provides the token.

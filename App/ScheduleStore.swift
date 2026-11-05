@@ -82,7 +82,6 @@ final class ScheduleStore {
         normalizedWeeks.filter { $0.key.hasPrefix("\(group.id)-") }.flatMap { $0.value }
             .sorted { $0.start < $1.start }
     }
-    var eligibleLessons: [Lesson] { preferences.eligible(upcomingLessons, groupID: group.id, now: .now) }
     var dayFinished: Bool { preferences.isFinished(.now, groupID: group.id) }
     func finishDay() async {
         preferences.finishedDays.insert(preferences.dayKey(.now, groupID: group.id))
@@ -118,9 +117,6 @@ final class ScheduleStore {
     /// The next lesson of a subject, used as the default deadline ("hand in at the lesson").
     func nextLesson(of subject: String, after date: Date = .now) -> Lesson? {
         upcomingLessons.first { $0.subject == subject && $0.start > date }
-    }
-    func lessonKinds(of subject: String) -> [String] {
-        Array(Set(upcomingLessons.filter { $0.subject == subject }.map(\.kind))).sorted()
     }
 
     func shiftWeek(_ offset: Int) { selectedDate = StudyClock.addDays(offset * 7, to: selectedDate) }

@@ -44,12 +44,11 @@ struct PolytechLiveActivity: Widget {
             .keylineTint(accent)
         }
     }
-    private func timer(_ context: ActivityViewContext<LessonAttributes>) -> some View {
-        let start = context.state.updatedAt
-        let end = max(context.state.end, start)
-        return Text(timerInterval: start...end, countsDown: true)
-            .monospacedDigit().multilineTextAlignment(.trailing).minimumScaleFactor(0.75)
-    }
+}
+
+private func timer(_ context: ActivityViewContext<LessonAttributes>) -> some View {
+    Text(timerInterval: context.state.updatedAt...max(context.state.end, context.state.updatedAt), countsDown: true)
+        .monospacedDigit().multilineTextAlignment(.trailing).minimumScaleFactor(0.75)
 }
 
 private struct LiveActivityView: View {
@@ -77,7 +76,7 @@ private struct LiveActivityView: View {
                         Text("\(StudyClock.string(context.state.start, format: "HH:mm")) — \(StudyClock.string(context.state.end, format: "HH:mm"))")
                     }.font(.system(size: 12)).foregroundStyle(ink.opacity(0.65))
                     Spacer(minLength: 10)
-                    timer.frame(width: 118, alignment: .trailing).font(.system(size: 28, weight: .light)).foregroundStyle(highlight)
+                    timer(context).frame(width: 118, alignment: .trailing).font(.system(size: 28, weight: .light)).foregroundStyle(highlight)
                 }
                 ProgressView(timerInterval: context.state.start...context.state.end, countsDown: false)
                     .labelsHidden().tint(highlight)
@@ -85,12 +84,5 @@ private struct LiveActivityView: View {
             .environment(\.colorScheme, scheme)
             .activityBackgroundTint(canvas)
             .activitySystemActionForegroundColor(highlight)
-    }
-
-    private var timer: some View {
-        let start = context.state.updatedAt
-        let end = max(context.state.end, start)
-        return Text(timerInterval: start...end, countsDown: true)
-            .monospacedDigit().multilineTextAlignment(.trailing).minimumScaleFactor(0.75)
     }
 }
