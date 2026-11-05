@@ -5,6 +5,8 @@ struct SettingsView: View {
     @Bindable var store: ScheduleStore
     @Environment(\.dismiss) private var dismiss
     @State private var showGroups = false
+    @State private var nameDraft = ""
+    @State private var addressDraft = ""
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 28) {
@@ -13,6 +15,30 @@ struct SettingsView: View {
                     Button { showGroups = true } label: {
                         HStack { VStack(alignment: .leading, spacing: 5) { Text(store.group.name).font(.headline); Text(store.group.faculty.name).font(.caption).foregroundStyle(.secondary) }; Spacer(); Image(systemName: "arrow.up.right") }
                     }.buttonStyle(.plain)
+                }
+                section("Задания и изменения") {
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("Ваше имя в группе").font(.system(size: 14))
+                        TextField("Как вас увидят одногруппники", text: $nameDraft)
+                            .textFieldStyle(.plain).padding(12).background(Palette.canvas, in: RoundedRectangle(cornerRadius: 10))
+                            .onSubmit(saveName)
+                    }
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("Сервер группы").font(.system(size: 14))
+                        TextField("http://MacBook-Pro-Arthur.local:8080", text: $addressDraft)
+                            .studySearchInput().autocorrectionDisabled()
+                            .textFieldStyle(.plain).padding(12).background(Palette.canvas, in: RoundedRectangle(cornerRadius: 10))
+                            .onSubmit(saveAddress)
+                    }
+                    HStack {
+                        ServerBadge(study: store.study)
+                        Spacer()
+                        Button("Подключить") { saveName(); saveAddress() }.buttonStyle(SoftButton())
+                    }
+                    if case .offline(let reason) = store.study.status { Text(reason).font(.caption).foregroundStyle(.secondary) }
+                    ToggleRow(title: "Уведомлять об изменениях", subtitle: "Переносы, отмены и новые пары на ближайшую неделю.", value: Bindable(store.study).notifyChanges)
+                    ToggleRow(title: "Напоминать о сроках", subtitle: "За день и за 3 часа до срока невыполненного задания.", value: Bindable(store.study).notifyDeadlines)
+                    Text("Изменения расписания приложение находит само при каждом обновлении. Сервер добавляет общие задания группы и проверяет расписание каждые 15 минут, даже когда приложение закрыто. Задания открыты всем, кто выбрал эту группу.").font(.caption).foregroundStyle(.secondary)
                 }
                 section("Оформление") {
                     HStack(spacing: 7) {
@@ -87,6 +113,19 @@ struct SettingsView: View {
             }.padding(26).frame(maxWidth: 680).frame(maxWidth: .infinity)
         }.background(Palette.canvas).studySheetSize()
             .sheet(isPresented: $showGroups) { GroupPicker(store: store).studyAppearance(store) }
+            .onAppear { nameDraft = store.study.displayName; addressDraft = store.study.serverAddress }
+            .onDisappear { saveName(); saveAddress() }
+    }
+    private func saveName() {
+        let name = String(nameDraft.trimmingCharacters(in: .whitespacesAndNewlines).prefix(40))
+        guard name != store.study.displayName else { return }
+        store.study.displayName = name
+        Task { await store.study.renameOnServer() }
+    }
+    private func saveAddress() {
+        let address = addressDraft.trimmingCharacters(in: .whitespacesAndNewlines)
+        if address != store.study.serverAddress { store.study.serverAddress = address }
+        Task { await store.study.sync() }
     }
     private func section<Content: View>(_ title: String, @ViewBuilder content: () -> Content) -> some View {
         VStack(alignment: .leading, spacing: 16) { Eyebrow(text: title); VStack(alignment: .leading, spacing: 12, content: content).padding(18).frame(maxWidth: .infinity, alignment: .leading).background(Palette.card, in: RoundedRectangle(cornerRadius: 18)) }

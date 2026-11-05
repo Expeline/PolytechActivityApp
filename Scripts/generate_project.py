@@ -60,7 +60,7 @@ for scope in ['project', 'app', 'widget', 'mac', 'macwidget']:
     configurations=[]
     for name in ['Debug', 'Release']:
         values = dict(common) if scope == 'project' else {
-            'CODE_SIGN_STYLE':'Automatic', 'CURRENT_PROJECT_VERSION':'5', 'MARKETING_VERSION':'2.2',
+            'CODE_SIGN_STYLE':'Automatic', 'CURRENT_PROJECT_VERSION':'6', 'MARKETING_VERSION':'3.0',
             'GENERATE_INFOPLIST_FILE':'YES', 'TARGETED_DEVICE_FAMILY':'1,2', 'SUPPORTED_PLATFORMS':'iphoneos iphonesimulator',
             'SUPPORTS_MACCATALYST':'NO', 'SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD':'NO', 'SWIFT_STRICT_CONCURRENCY':'complete',
         }

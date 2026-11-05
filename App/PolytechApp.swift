@@ -19,6 +19,8 @@ struct PolytechApp: App {
         }
         .backgroundTask(.appRefresh(Self.backgroundID)) {
             await store.refresh(allowActivityStart: false)
+            await store.study.sync()
+            store.study.stopLive()
             await scheduleRefresh()
         }
     }
@@ -39,14 +41,16 @@ struct RootView: View {
     var body: some View {
         ScheduleView(store: store)
         .task(id: "\(store.group.id)-\(store.key(store.selectedDate))-\(scenePhase)") {
-            guard scenePhase == .active else { return }
+            guard scenePhase == .active else { store.study.stopLive(); return }
             await store.syncActivity()
             await store.refresh()
+            await store.study.sync()
             var lastRefresh = Date.now
             while !Task.isCancelled {
                 do { try await Task.sleep(for: .seconds(15)) } catch { return }
                 if Date.now.timeIntervalSince(lastRefresh) >= 900 {
                     await store.refresh()
+                    await store.study.sync()
                     lastRefresh = .now
                 } else { await store.syncActivity() }
             }

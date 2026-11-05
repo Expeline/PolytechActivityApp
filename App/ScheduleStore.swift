@@ -21,6 +21,8 @@ final class ScheduleStore {
     }
     var widgetSyncFailed = false
     var showSettings = false
+    var section: StudySection = .schedule
+    let study = StudyStore()
     var accent: StudyAccent {
         didSet { UserDefaults.standard.set(accent.rawValue, forKey: "accent"); publishWidgets() }
     }
@@ -65,6 +67,7 @@ final class ScheduleStore {
         cacheURL = folder.appendingPathComponent("schedule.json")
         cache = (try? Data(contentsOf: cacheURL)).flatMap { try? JSONDecoder().decode([String: CachedWeek].self, from: $0) } ?? [:]
         normalizedWeeks = cache.mapValues { $0.response.lessons }
+        study.select(groupID: group.id)
     }
 
     var weekStart: Date { StudyClock.monday(selectedDate) }
@@ -108,6 +111,18 @@ final class ScheduleStore {
         cache[key(.now)] != nil && cache[key(StudyClock.addDays(7, to: .now))] != nil
     }
 
+    /// Every subject seen in the cached schedule of this group, for assignment pickers.
+    var subjects: [String] {
+        Set(normalizedWeeks.filter { $0.key.hasPrefix("\(group.id)-") }.values.flatMap { $0.map(\.subject) }).sorted()
+    }
+    /// The next lesson of a subject, used as the default deadline ("hand in at the lesson").
+    func nextLesson(of subject: String, after date: Date = .now) -> Lesson? {
+        upcomingLessons.first { $0.subject == subject && $0.start > date }
+    }
+    func lessonKinds(of subject: String) -> [String] {
+        Array(Set(upcomingLessons.filter { $0.subject == subject }.map(\.kind))).sorted()
+    }
+
     func shiftWeek(_ offset: Int) { selectedDate = StudyClock.addDays(offset * 7, to: selectedDate) }
 
     func refresh(allowActivityStart: Bool = true) async {
@@ -142,6 +157,10 @@ final class ScheduleStore {
                         failures.append("Сервис вернул другую группу.")
                         continue
                     }
+                    // PolyChanges: compare with the copy we had before replacing it.
+                    if let previous = normalizedWeeks[key(date, groupID: requestedGroup.id)] {
+                        study.recordLocal(old: previous, new: response.lessons, groupID: requestedGroup.id)
+                    }
                     cache[key(date, groupID: requestedGroup.id)] = CachedWeek(response: response, fetchedAt: .now)
                     normalizedWeeks[key(date, groupID: requestedGroup.id)] = response.lessons
                     if StudyClock.calendar.isDate(date, inSameDayAs: StudyClock.monday(requestedDate)) { group = response.group }
@@ -173,6 +192,7 @@ final class ScheduleStore {
         group = newGroup
         selectedDate = StudyClock.calendar.startOfDay(for: .now)
         activityMessage = nil
+        study.select(groupID: newGroup.id)
     }
 
     func syncActivity(allowStart: Bool = true) async {

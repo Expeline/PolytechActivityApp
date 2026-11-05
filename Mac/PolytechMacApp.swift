@@ -25,10 +25,15 @@ struct PolytechMacApp: App {
             CommandGroup(replacing: .newItem) {}
             CommandGroup(replacing: .toolbar) {}
             CommandMenu("Учёба") {
+                ForEach(Array(StudySection.allCases.enumerated()), id: \.element) { index, section in
+                    Button(section.title) { store.section = section }
+                        .keyboardShortcut(KeyEquivalent(Character("\(index + 1)")), modifiers: .command)
+                }
+                Divider()
                 Button("Завершить учебный день") { Task { await store.finishDay() } }
                 Button("Вернуться к занятиям") { Task { await store.resumeDay() } }
                 Divider()
-                Button("Обновить расписание") { Task { await store.refresh() } }.keyboardShortcut("r", modifiers: .command)
+                Button("Обновить расписание") { Task { await store.refresh(); await store.study.sync() } }.keyboardShortcut("r", modifiers: .command)
             }
         }
 
@@ -59,12 +64,14 @@ final class MacAppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         refreshTask = Task { @MainActor [store] in
             await store.refresh()
+            await store.study.sync()
             var refreshed = Date.now
             while !Task.isCancelled {
                 do { try await Task.sleep(for: .seconds(30)) } catch { return }
                 store.activityDate = .now
                 if Date.now.timeIntervalSince(refreshed) >= 900 {
                     await store.refresh()
+                    await store.study.sync()
                     refreshed = .now
                 }
             }
@@ -108,6 +115,7 @@ struct MacActivityView: View {
                         .font(.caption).foregroundStyle(.secondary)
                 }.padding(.horizontal, 8)
             }
+            studySummary
             if let error = store.errorMessage { Text(error).font(.caption).foregroundStyle(.secondary) }
             HStack {
                 Button("Открыть расписание", action: showApp).buttonStyle(.borderedProminent)
@@ -123,6 +131,27 @@ struct MacActivityView: View {
                 .buttonStyle(.plain).font(.caption).foregroundStyle(.secondary)
         }
         .padding(16).frame(width: 410).background(Palette.canvas)
+    }
+
+    /// Nearest open deadline and unseen schedule changes.
+    @ViewBuilder private var studySummary: some View {
+        let next = store.study.assignments(groupID: store.group.id).first { !$0.completedByMe && $0.dueAt > .now }
+        let unseen = store.study.unseenChanges(groupID: store.group.id)
+        if next != nil || unseen > 0 {
+            VStack(alignment: .leading, spacing: 8) {
+                if let next {
+                    Button { store.section = .assignments; showApp() } label: {
+                        Label("\(next.title) · \(StudyClock.string(next.dueAt, format: "EE, d MMM HH:mm"))", systemImage: "checklist")
+                            .lineLimit(1)
+                    }.buttonStyle(.plain)
+                }
+                if unseen > 0 {
+                    Button { store.section = .changes; showApp() } label: {
+                        Label("Изменений в расписании: \(unseen)", systemImage: "arrow.triangle.2.circlepath")
+                    }.buttonStyle(.plain).foregroundStyle(.orange)
+                }
+            }.font(.caption).padding(.horizontal, 8)
+        }
     }
 
     private func showApp() {

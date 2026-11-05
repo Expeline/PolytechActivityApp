@@ -118,3 +118,37 @@ extension View {
         #endif
     }
 }
+
+extension View {
+    /// Liquid Glass for floating controls only; content cards stay opaque so text is easy to read.
+    @ViewBuilder func studyGlass<S: Shape>(in shape: S) -> some View {
+        if #available(iOS 26, macOS 26, *) {
+            glassEffect(.regular.interactive(), in: shape)
+        } else {
+            background(Palette.card, in: shape)
+        }
+    }
+}
+
+/// A compact tile for the "today" row on the schedule screen.
+struct SummaryTile: View {
+    @Environment(\.studyAccent) private var accent
+    let symbol: String
+    let value: String
+    let caption: String
+    var highlighted = false
+    let action: () -> Void
+    var body: some View {
+        Button(action: action) {
+            VStack(alignment: .leading, spacing: 10) {
+                Image(systemName: symbol).font(.system(size: 15, weight: .semibold))
+                    .foregroundStyle(highlighted ? Color.orange : accent.color)
+                Text(value).font(.system(size: 22, weight: .semibold)).monospacedDigit().contentTransition(.numericText())
+                Text(caption).font(.system(size: 11)).foregroundStyle(.secondary).lineLimit(2).multilineTextAlignment(.leading)
+            }
+            .padding(14).frame(maxWidth: .infinity, minHeight: 104, alignment: .topLeading)
+            .background(Palette.card, in: RoundedRectangle(cornerRadius: 18))
+            .contentShape(RoundedRectangle(cornerRadius: 18))
+        }.buttonStyle(.plain)
+    }
+}
