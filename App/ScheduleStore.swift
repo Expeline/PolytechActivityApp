@@ -47,7 +47,9 @@ final class ScheduleStore {
     private let api = ScheduleAPI()
     private var refreshQueued = false
     private var refreshID = UUID()
-    private let cacheURL: URL
+    private
+    
+    let cacheURL: URL
 
     init() {
         let defaults = UserDefaults.standard
